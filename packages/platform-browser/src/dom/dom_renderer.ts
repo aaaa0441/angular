@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Injectable, Renderer2, RendererFactory2, RendererStyleFlags2, RendererType2, ViewEncapsulation} from '@angular/core';
+import {APP_ID, Inject, Injectable, Renderer2, RendererFactory2, RendererStyleFlags2, RendererType2, ViewEncapsulation} from '@angular/core';
 
 import {EventManager} from './events/event_manager';
 import {DomSharedStylesHost} from './shared_styles_host';
@@ -63,7 +63,7 @@ export class DomRendererFactory2 implements RendererFactory2 {
   private rendererByCompId = new Map<string, Renderer2>();
   private defaultRenderer: Renderer2;
 
-  constructor(private eventManager: EventManager, private sharedStylesHost: DomSharedStylesHost) {
+  constructor(private eventManager: EventManager, private sharedStylesHost: DomSharedStylesHost, @Inject(APP_ID) private appId: string) {
     this.defaultRenderer = new DefaultDomRenderer2(eventManager);
   }
 
@@ -76,7 +76,7 @@ export class DomRendererFactory2 implements RendererFactory2 {
         let renderer = this.rendererByCompId.get(type.id);
         if (!renderer) {
           renderer =
-              new EmulatedEncapsulationDomRenderer2(this.eventManager, this.sharedStylesHost, type);
+              new EmulatedEncapsulationDomRenderer2(this.eventManager, this.sharedStylesHost, type, this.appId);
           this.rendererByCompId.set(type.id, renderer);
         }
         (<EmulatedEncapsulationDomRenderer2>renderer).applyToHost(element);
@@ -232,13 +232,14 @@ class EmulatedEncapsulationDomRenderer2 extends DefaultDomRenderer2 {
 
   constructor(
       eventManager: EventManager, sharedStylesHost: DomSharedStylesHost,
-      private component: RendererType2) {
+      private component: RendererType2, appId: string) {
     super(eventManager);
-    const styles = flattenStyles(component.id, component.styles, []);
+    const combinedId = appId + '-' + component.id;
+    const styles = flattenStyles(combinedId, component.styles, []);
     sharedStylesHost.addStyles(styles);
 
-    this.contentAttr = shimContentAttribute(component.id);
-    this.hostAttr = shimHostAttribute(component.id);
+    this.contentAttr = shimContentAttribute(combinedId);
+    this.hostAttr = shimHostAttribute(combinedId);
   }
 
   applyToHost(element: any) { super.setAttribute(element, this.hostAttr, ''); }
